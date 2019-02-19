@@ -8,12 +8,9 @@ import {
     ShaderMaterialParameters,
     PlaneBufferGeometry,
     Mesh,
-    IUniforms,
-    Vector2,
-    IVec2Uniform,
-    IFloatUniform
+    Vector2
 } from 'three'
-
+import { IUniforms, IVec2Uniform, IFloatUniform } from 'three-uniforms'
 import vertex from './shaders/mandelbrotVertex.glsl'
 import fragment from './shaders/mandelbrotFragment.glsl'
 
