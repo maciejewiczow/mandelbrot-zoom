@@ -37,7 +37,7 @@ module.exports = {
         path: path.resolve(__dirname, 'dist')
     },
     resolve: {
-        extensions: ['.tsx', '.ts', '.js']
+        extensions: ['.tsx', '.ts', '.js', '*']
     },
     plugins: [
         new HtmlWebPackPlugin({
