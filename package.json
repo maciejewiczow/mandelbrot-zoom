@@ -7,8 +7,10 @@
         "test": "jest",
         "build": "webpack --mode production",
         "dev": "webpack --mode development",
-        "start": "start \"Webpack\" webpack-dev-server --open --mode development",
-        "restart": "webpack-dev-server --mode development"
+        "start": "node server.js",
+        "start:dev": "start \"Webpack\" webpack-dev-server --open --mode development",
+        "restart": "webpack-dev-server --mode development",
+        "postinstall": "npm run build"
     },
     "keywords": [
         "mandelbrot",
@@ -21,6 +23,7 @@
     "author": "Maciej Adamus",
     "license": "MIT",
     "dependencies": {
+        "express": "^4.16.4",
         "three": "^0.101.1"
     },
     "devDependencies": {
