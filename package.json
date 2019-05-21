@@ -24,6 +24,7 @@
     "license": "MIT",
     "dependencies": {
         "express": "^4.16.4",
+        "pan-zoom": "^3.4.0",
         "three": "^0.101.1"
     },
     "devDependencies": {
