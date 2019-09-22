@@ -1,4 +1,5 @@
 /// <reference path='../typings/assets.d.ts'/>
+/// <reference path='../typings/panzoom.d.ts'/>
 
 import {
     Scene,
@@ -10,7 +11,11 @@ import {
     Mesh,
     Vector2
 } from 'three'
+import panZoom from 'pan-zoom'
+
+import zoomEvent from 'pan-zoom-interface'
 import { IUniforms, IVec2Uniform, IFloatUniform } from 'three-uniforms'
+
 import vertex from './shaders/mandelbrotVertex.glsl'
 import fragment from './shaders/mandelbrotFragment.glsl'
 
@@ -22,19 +27,17 @@ interface MandelbrotUniforms extends IUniforms {
 }
 
 export default class App {
+    private static readonly uniformPropertyKey = 'mandelbrot-uniforms'
+
     private scene: Scene
     private renderer: WebGLRenderer
     private camera: OrthographicCamera
     uniforms: MandelbrotUniforms
 
-    private isPlaying: boolean
-
     constructor(private root: HTMLElement) {
         this.scene = new Scene()
         this.renderer = new WebGLRenderer()
         this.renderer.setPixelRatio(window.devicePixelRatio)
-
-        this.isPlaying = true
 
         this.camera = new OrthographicCamera(
             -window.innerWidth / 2,
@@ -47,60 +50,30 @@ export default class App {
 
         this.camera.position.z = 1
 
-        this.uniforms = {
-            translation: {
-                type: 'v2',
-                value: new Vector2(-0.46857999999999983, 0.49127100000000007)
-            },
-            scale: { type: 'f', value: 1 },
-            aspectRatio: { type: 'f', value: window.innerWidth / window.innerHeight },
-            time: { type: 'f', value: 0.1 }
+        const uniforms = /* localStorage.getItem(App.uniformPropertyKey) */ null
+
+        this.uniforms = uniforms
+            ? JSON.parse(uniforms)
+            : {
+                  translation: {
+                      type: 'v2',
+                      value: new Vector2(0, 0)
+                  },
+                  scale: { type: 'f', value: 0.6 },
+                  aspectRatio: { type: 'f', value: window.innerWidth / window.innerHeight },
+                  time: { type: 'f', value: 0.1 }
+              }
+
+        this.uniforms.aspectRatio.value = window.innerWidth / window.innerHeight
+
+        if (!(this.uniforms.translation.value instanceof Vector2)) {
+            const { x, y } = this.uniforms.translation.value
+
+            this.uniforms.translation.value = new Vector2(x, y)
         }
 
         this.onResize = this.onResize.bind(this)
-        this.onMouseMove = this.onMouseMove.bind(this)
-        this.onMouseScroll = this.onMouseScroll.bind(this)
-        this.onKeyPress = this.onKeyPress.bind(this)
-    }
-
-    private onResize() {
-        this.renderer.setSize(window.innerWidth, window.innerHeight)
-        this.uniforms.aspectRatio.value = window.innerWidth / window.innerHeight
-    }
-
-    private onMouseMove() {}
-
-    private onMouseScroll() {}
-
-    private onKeyPress(e: KeyboardEvent) {
-        const step = Math.min(0.1, 0.1 / this.uniforms.scale.value)
-
-        switch (e.code) {
-            case 'Space':
-                if (this.isPlaying) this.pause()
-                else this.play()
-                break
-            case 'ArrowUp':
-                this.uniforms.translation.value.y += step
-                break
-            case 'ArrowDown':
-                this.uniforms.translation.value.y -= step
-                break
-            case 'ArrowLeft':
-                this.uniforms.translation.value.x -= step
-                break
-            case 'ArrowRight':
-                this.uniforms.translation.value.x += step
-                break
-        }
-    }
-
-    private async fetchShaderSources(): Promise<Partial<ShaderMaterialParameters>> {
-        const responses = await Promise.all([fetch(vertex), fetch(fragment)])
-
-        const [vertexShader, fragmentShader] = await Promise.all(responses.map(res => res.text()))
-
-        return { vertexShader, fragmentShader }
+        this.onZoom = this.onZoom.bind(this)
     }
 
     async initalize() {
@@ -109,7 +82,7 @@ export default class App {
         const material = new ShaderMaterial({
             uniforms: this.uniforms,
             defines: {
-                ITERATION_LIMIT: 440
+                ITERATION_LIMIT: 2000
             },
             ...shaders
         })
@@ -123,29 +96,52 @@ export default class App {
 
         this.onResize()
         window.addEventListener('resize', this.onResize)
-        window.addEventListener('mousemove', this.onMouseMove)
-        window.addEventListener('mousewheel', this.onMouseScroll)
-        window.addEventListener('keydown', this.onKeyPress)
+        this.renderer.domElement.addEventListener(
+            'mousedown',
+            () => (this.renderer.domElement.style.cursor = 'grabbing')
+        )
+        this.renderer.domElement.addEventListener(
+            'mouseup',
+            () => (this.renderer.domElement.style.cursor = 'grab')
+        )
+
+        setInterval(() => {
+            localStorage.setItem(App.uniformPropertyKey, JSON.stringify(this.uniforms))
+        }, 1000)
+
+        panZoom(this.renderer.domElement, this.onZoom)
     }
 
-    play() {
-        this.isPlaying = true
-        this.animate()
+    private onResize() {
+        this.renderer.setSize(window.innerWidth, window.innerHeight)
+        this.uniforms.aspectRatio.value = window.innerWidth / window.innerHeight
     }
 
-    pause() {
-        this.isPlaying = false
+    private onZoom(event: zoomEvent) {
+        const step = Math.min(0.001, 0.1 / this.uniforms.scale.value)
+
+        this.uniforms.scale.value -=
+            Math.sign(event.dz) * Math.pow(1.6, Math.abs(event.dz * 0.05)) * 0.001
+        this.uniforms.translation.value.x -= Math.sign(event.dx) * step
+        this.uniforms.translation.value.y += event.dy * step
+
+        //console.log(event)
+        console.log(event.dz, this.uniforms.scale.value)
+    }
+
+    private async fetchShaderSources(): Promise<Partial<ShaderMaterialParameters>> {
+        const responses = await Promise.all([fetch(vertex), fetch(fragment)])
+
+        const [vertexShader, fragmentShader] = await Promise.all(responses.map(res => res.text()))
+
+        return { vertexShader, fragmentShader }
     }
 
     animate() {
         this.renderer.render(this.scene, this.camera)
 
-        // @ts-ignore
         this.uniforms.time.value += 0.01
-        this.uniforms.scale.value = Math.pow(this.uniforms.time.value, 2)
 
-        if (this.uniforms.scale.value > 900000) this.uniforms.time.value = 0.1
-
-        if (this.isPlaying) window.requestAnimationFrame(this.animate.bind(this))
+        window.requestAnimationFrame(this.animate.bind(this))
     }
 }
