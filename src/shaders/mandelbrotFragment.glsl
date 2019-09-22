@@ -33,7 +33,7 @@ void main() {
         z.y = y;
     }
 
-    float value = (iterations != ITERATION_LIMIT-1) ? float(iterations)/float(ITERATION_LIMIT) : 0.0;
+    float value = (iterations != ITERATION_LIMIT-1) ? sqrt(float(iterations)/float(ITERATION_LIMIT)) : 0.0;
 
     gl_FragColor = vec4(abs(value*sin(time)), abs(value*sin(2.0*PI/3.0 + time)), abs(value*sin(4.0*PI/3.0 + time)), 1.0);
 }
