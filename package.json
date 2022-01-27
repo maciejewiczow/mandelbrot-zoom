@@ -24,7 +24,7 @@
     "license": "MIT",
     "dependencies": {
         "express": "^4.16.4",
-        "three": "^0.101.1"
+        "three": "^0.137.0"
     },
     "devDependencies": {
         "@types/three": "^0.93.20",
